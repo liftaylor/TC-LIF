@@ -7,7 +7,7 @@ def load_dataset(dataset='MNIST', batch_size=100, dataset_path='../../data', is_
     kwargs = {'num_workers': num_workers, 'pin_memory': True} if is_cuda else {}
     if dataset == 'MNIST':
         num_classes = 10
-        dataset_train = datasets.MNIST(os.path.join(dataset_path, 'MNIST'), train=True, download=False,
+        dataset_train = datasets.MNIST(os.path.join(dataset_path, 'MNIST'), train=True, download=True,
                                        transform=transforms.ToTensor())
         train_loader = torch.utils.data.DataLoader(
             dataset_train,
