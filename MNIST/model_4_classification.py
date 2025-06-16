@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 import time
 from tqdm import tqdm
+import os
 
 
 # ---------------------
@@ -97,7 +98,7 @@ def load_smnist(batch_size=64):
 # ---------------------
 # Train + Evaluate
 # ---------------------
-def train_smnist_classifier():
+def train_smnist_classifier(epochs=20, checkpoint_path="model_checkpoint.pt"):
     start_time = time.time()
     print("Training started at:", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_time)))
 
@@ -105,8 +106,17 @@ def train_smnist_classifier():
     model = Model4SMNISTClassifier()
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    start_epoch = 0
 
-    for epoch in range(200):
+    # Load checkpoint if exists
+    if os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        print(f"Resuming from epoch {start_epoch}")
+
+    for epoch in range(start_epoch, epochs):
         model.train()
         total_loss = 0
         correct = 0
@@ -126,6 +136,13 @@ def train_smnist_classifier():
 
         print(f"Epoch {epoch}, Train Loss: {total_loss / len(train_loader):.4f}, Accuracy: {correct / total:.4f}")
 
+        # Save checkpoint
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict()
+        }, checkpoint_path)
+
     model.eval()
     correct = 0
     total = 0
@@ -143,4 +160,4 @@ def train_smnist_classifier():
 
 
 if __name__ == '__main__':
-    train_smnist_classifier()
+    train_smnist_classifier(epochs=200)
