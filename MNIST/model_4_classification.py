@@ -7,6 +7,14 @@ import time
 from tqdm import tqdm
 import os
 
+# Set device
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print("Using device:", device)
+
+# Enable Torch Compile and Mixed Precision (AMP)
+use_amp = True
+use_compile = True
+
 
 # ---------------------
 # Surrogate spike function
@@ -83,7 +91,7 @@ class Model4SMNISTClassifier(nn.Module):
 # ---------------------
 # Load S-MNIST Data
 # ---------------------
-def load_smnist(batch_size=64):
+def load_smnist(batch_size=256):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Lambda(lambda x: x.view(-1, 1))  # [784, 1]
@@ -103,14 +111,19 @@ def train_smnist_classifier(epochs=20, checkpoint_path="model_checkpoint.pt"):
     print("Training started at:", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_time)))
 
     train_loader, test_loader = load_smnist()
-    model = Model4SMNISTClassifier()
+    model = Model4SMNISTClassifier().to(device)
+    # if use_compile:
+    # torch.compile requires PyTorch 2.0+. Commented out for compatibility.
+    # model = torch.compile(model)
+
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
     start_epoch = 0
 
     # Load checkpoint if exists
     if os.path.exists(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path)
+        checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch'] + 1
@@ -123,18 +136,23 @@ def train_smnist_classifier(epochs=20, checkpoint_path="model_checkpoint.pt"):
         total = 0
         loop = tqdm(train_loader, desc=f"Epoch {epoch}", leave=False)
         for xb, yb in loop:
+            xb, yb = xb.to(device), yb.to(device)
             optimizer.zero_grad()
-            out = model(xb)
-            loss = criterion(out, yb)
-            loss.backward()
-            optimizer.step()
+            with torch.cuda.amp.autocast(enabled=use_amp):
+                out = model(xb)
+                loss = criterion(out, yb)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+
             total_loss += loss.item()
             preds = out.argmax(dim=1)
             correct += (preds == yb).sum().item()
             total += yb.size(0)
             loop.set_postfix(loss=total_loss / (total / xb.size(0)), acc=correct / total)
 
-        print(f"Epoch {epoch}, Train Loss: {total_loss / len(train_loader):.4f}, Accuracy: {correct / total:.4f}")
+        print(
+            f"Epoch {epoch}, Train Loss: {total_loss / len(train_loader):.4f}, Accuracy: {(correct / total) * 100:.2f}%")
 
         # Save checkpoint
         torch.save({
@@ -148,11 +166,13 @@ def train_smnist_classifier(epochs=20, checkpoint_path="model_checkpoint.pt"):
     total = 0
     with torch.no_grad():
         for xb, yb in test_loader:
-            out = model(xb)
+            xb, yb = xb.to(device), yb.to(device)
+            with torch.cuda.amp.autocast(enabled=use_amp):
+                out = model(xb)
             preds = out.argmax(dim=1)
             correct += (preds == yb).sum().item()
             total += yb.size(0)
-    print(f"Test Accuracy: {correct / total:.4f}")
+    print(f"Test Accuracy: {(correct / total) * 100:.2f}%")
 
     end_time = time.time()
     print("Training ended at:", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(end_time)))
@@ -160,4 +180,4 @@ def train_smnist_classifier(epochs=20, checkpoint_path="model_checkpoint.pt"):
 
 
 if __name__ == '__main__':
-    train_smnist_classifier(epochs=200)
+    train_smnist_classifier(epochs=250)
