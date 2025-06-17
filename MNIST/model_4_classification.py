@@ -117,7 +117,7 @@ def train_smnist_classifier(epochs=20, checkpoint_path="model_checkpoint.pt"):
     # model = torch.compile(model)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=3e-3)
     scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
     start_epoch = 0
 
@@ -180,4 +180,4 @@ def train_smnist_classifier(epochs=20, checkpoint_path="model_checkpoint.pt"):
 
 
 if __name__ == '__main__':
-    train_smnist_classifier(epochs=250)
+    train_smnist_classifier(epochs=350)
