@@ -117,8 +117,11 @@ def train_smnist_classifier(epochs=20, checkpoint_path="model_checkpoint.pt"):
     # model = torch.compile(model)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=3e-3)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
     scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='max', factor=0.5, patience=5, verbose=True, min_lr=1e-5
+    )
     start_epoch = 0
 
     # Load checkpoint if exists
@@ -154,6 +157,8 @@ def train_smnist_classifier(epochs=20, checkpoint_path="model_checkpoint.pt"):
         print(
             f"Epoch {epoch}, Train Loss: {total_loss / len(train_loader):.4f}, Accuracy: {(correct / total) * 100:.2f}%")
 
+        scheduler.step(correct / total)
+
         # Save checkpoint
         torch.save({
             'epoch': epoch,
@@ -180,4 +185,4 @@ def train_smnist_classifier(epochs=20, checkpoint_path="model_checkpoint.pt"):
 
 
 if __name__ == '__main__':
-    train_smnist_classifier(epochs=350)
+    train_smnist_classifier(epochs=450)
