@@ -147,7 +147,7 @@ def train_and_evaluate():
         loss.backward()
         optimizer.step()
         if epoch % 50 == 0:
-            print(f"Epoch {epoch}, Train Loss: {loss.item():.6f}")
+            print(f"Epoch {epoch}, Train Loss: {loss.item():.8f}")
 
     with torch.no_grad():
         Y_pred = model(X_test)
