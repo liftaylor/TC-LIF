@@ -1,0 +1,28 @@
+[2025-06-22 15:52:04] Resuming from epoch 180
+[2025-06-22 15:56:08] Epoch 180, Train Loss: 0.1814, Accuracy: 94.47%
+[2025-06-22 15:56:08] Best model saved at epoch 180 with accuracy 94.47%
+[2025-06-22 16:01:20] Epoch 181, Train Loss: 0.1832, Accuracy: 94.25%
+[2025-06-22 16:07:35] Epoch 182, Train Loss: 0.1790, Accuracy: 94.50%
+[2025-06-22 16:07:35] Best model saved at epoch 182 with accuracy 94.50%
+[2025-06-22 16:14:12] Epoch 183, Train Loss: 0.1745, Accuracy: 94.61%
+[2025-06-22 16:14:12] Best model saved at epoch 183 with accuracy 94.61%
+[2025-06-22 16:19:47] Epoch 184, Train Loss: 0.1779, Accuracy: 94.44%
+[2025-06-22 16:23:53] Epoch 185, Train Loss: 0.1794, Accuracy: 94.44%
+[2025-06-22 16:27:51] Epoch 186, Train Loss: 0.1733, Accuracy: 94.64%
+[2025-06-22 16:27:51] Best model saved at epoch 186 with accuracy 94.64%
+[2025-06-22 16:31:50] Epoch 187, Train Loss: 0.1706, Accuracy: 94.67%
+[2025-06-22 16:31:50] Best model saved at epoch 187 with accuracy 94.67%
+[2025-06-22 16:35:46] Epoch 188, Train Loss: 0.1739, Accuracy: 94.59%
+[2025-06-22 16:39:45] Epoch 189, Train Loss: 0.1770, Accuracy: 94.58%
+[2025-06-22 16:43:50] Epoch 190, Train Loss: 0.1753, Accuracy: 94.57%
+[2025-06-22 16:47:48] Epoch 191, Train Loss: 0.1820, Accuracy: 94.36%
+[2025-06-22 16:51:44] Epoch 192, Train Loss: 0.1875, Accuracy: 94.23%
+[2025-06-22 16:55:42] Epoch 193, Train Loss: 0.1735, Accuracy: 94.66%
+[2025-06-22 16:59:39] Epoch 194, Train Loss: 0.1724, Accuracy: 94.62%
+[2025-06-22 17:03:37] Epoch 195, Train Loss: 0.1805, Accuracy: 94.42%
+[2025-06-22 17:07:38] Epoch 196, Train Loss: 0.1696, Accuracy: 94.71%
+[2025-06-22 17:07:38] Best model saved at epoch 196 with accuracy 94.71%
+[2025-06-22 17:11:52] Epoch 197, Train Loss: 0.1730, Accuracy: 94.64%
+[2025-06-22 17:15:52] Epoch 198, Train Loss: 0.1792, Accuracy: 94.50%
+[2025-06-22 17:19:50] Epoch 199, Train Loss: 0.1720, Accuracy: 94.62%
+[2025-06-22 17:20:04] Test Accuracy: 94.87%

@@ -11,6 +11,8 @@ from tqdm import tqdm
 from torchvision.datasets import MNIST
 from torchvision import transforms
 from torch.utils.data import DataLoader
+from datetime import datetime
+from pathlib import Path
 
 
 def set_seed(seed=42):
@@ -26,6 +28,20 @@ def set_seed(seed=42):
 set_seed(42)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Create log directory with today's date
+run_date = datetime.now().strftime('%Y-%m-%d')
+log_dir = Path(f'experiments-{run_date}')
+log_dir.mkdir(parents=True, exist_ok=True)
+log_file = log_dir / 'train_log.txt'
+
+
+def log_to_file(message):
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    formatted = f"[{timestamp}] {message}"
+    with open(log_file, 'a') as f:
+        f.write(formatted + '\n')
+    print(formatted)
 
 
 # Define trainable beta1 and beta2 via decay_factor
@@ -153,6 +169,7 @@ checkpoint_path = "smnist_dds_checkpoint.pt"
 start_epoch = 0
 model = SmnistDDSClassifier().to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.005)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.5)
 criterion = nn.CrossEntropyLoss()
 # Load checkpoint if exists
 if os.path.exists(checkpoint_path):
@@ -161,14 +178,14 @@ if os.path.exists(checkpoint_path):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     losses = checkpoint.get('losses', [])
     start_epoch = checkpoint['epoch'] + 1
-    print(f"Resuming from epoch {start_epoch}")
-
+    log_to_file(f"Resuming from epoch {start_epoch}")
 else:
     losses = []
 
 target_total_epochs = 200
 
 for epoch in range(start_epoch, target_total_epochs):
+    scheduler.step()
     loop = tqdm(train_loader, desc=f"Epoch {epoch}", leave=False)
     model.train()
     total_loss = 0
@@ -190,8 +207,9 @@ for epoch in range(start_epoch, target_total_epochs):
         loop.set_postfix(loss=loss.item(), acc=100. * correct / total)
         avg_loss = total_loss / len(train_loader)
     losses.append(avg_loss)
-    print(f"Epoch {epoch}, Train Loss: {avg_loss:.4f}, Accuracy: {(correct / total) * 100:.2f}%")
-    # print(f"Beta: {model.spike2.spike.beta.data}")
+    log_to_file(
+        f"Epoch {epoch}, Train Loss: {avg_loss:.4f}, Accuracy: {(correct / total) * 100:.2f}%, Beta2: {[round(x.item(), 4) for x in model.spike2.spike.beta[0]]}")
+
     # Save checkpoint
     torch.save({
         'epoch': epoch,
@@ -200,6 +218,12 @@ for epoch in range(start_epoch, target_total_epochs):
         'losses': losses
     }, checkpoint_path)
 
+    # Save best model if accuracy improves
+    best_model_path = "smnist_dds_best.pt"
+    if epoch == start_epoch or (correct / total) > globals().get('best_acc', 0):
+        torch.save(model.state_dict(), best_model_path)
+        best_acc = correct / total
+        log_to_file(f"Best model saved at epoch {epoch} with accuracy {best_acc * 100:.2f}%")
 
 # Evaluation
 model.eval()
@@ -214,7 +238,8 @@ with torch.no_grad():
         correct += (pred == yb).sum().item()
         samples += yb.size(0)
 
-print(f"Test Accuracy: {100. * correct / samples:.2f}%")
+final_acc = f"Test Accuracy: {100. * correct / samples:.2f}%"
+log_to_file(final_acc)
 
 plt.figure()
 plt.plot(losses)
@@ -222,5 +247,5 @@ plt.title("Training Loss (CrossEntropy)")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.grid(True)
-plt.savefig("training_loss_curve.png")
+plt.savefig(log_dir / "training_loss_curve.png")
 plt.show()
