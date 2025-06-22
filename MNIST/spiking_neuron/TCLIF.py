@@ -159,3 +159,70 @@ class TCLIFNode(BaseNode):
                f"hard_reset={self.hard_reset}, " \
                f"gamma={self.gamma}, k={self.k}, step_mode={self.step_mode}, backend={self.backend}"
 
+
+class DDSNode(BaseNode):
+    def __init__(self,
+                 v_threshold=1.,
+                 v_reset=0.,
+                 surrogate_function: Callable = None,
+                 detach_reset=False,
+                 hard_reset=False,
+                 step_mode='s',
+                 k=3,  # three compartments: UD1, UD2, US
+                 decay_factor: torch.Tensor = torch.empty(1, 3).uniform_(-0.1, 0.1),
+                 alpha1: float = 1.0,
+                 alpha2: float = 1.0,
+                 alpha_d2: float = 1.0,
+                 beta_s2: float = 1.0,
+                 lambda_ud1: float = 1.0,
+                 gamma: float = 0.5):
+        super(DDSNode, self).__init__(v_threshold, v_reset, surrogate_function, detach_reset, step_mode)
+        self.k = k
+        for i in range(1, self.k + 1):
+            self.register_memory('v' + str(i), 0.)  # v1 = UD1, v2 = UD2, v3 = US
+
+        self.names = self._memories
+        self.hard_reset = hard_reset
+        self.gamma = gamma
+
+        self.decay_factor = torch.nn.Parameter(decay_factor)
+        self.alpha1 = torch.nn.Parameter(torch.tensor(alpha1))
+        self.alpha2 = torch.nn.Parameter(torch.tensor(alpha2))
+        self.alpha_d2 = torch.nn.Parameter(torch.tensor(alpha_d2))
+        self.beta_s2 = torch.nn.Parameter(torch.tensor(beta_s2))
+        self.lambda_ud1 = torch.nn.Parameter(torch.tensor(lambda_ud1))
+
+    def neuronal_charge(self, x: torch.Tensor):
+        beta1 = -torch.sigmoid(self.decay_factor[0][0])
+        beta2 = torch.sigmoid(self.decay_factor[0][1])
+        beta3 = torch.sigmoid(self.decay_factor[0][2])
+
+        spike_fn = self.surrogate_function
+        spike = spike_fn(self.names['v3'] - torch.tensor(self.v_threshold).to(self.names['v3']))
+
+        self.names['v1'] = self.alpha1 * self.names['v1'] + beta1 * self.names['v3'] + x - self.gamma * spike  # Equation 1: UD1 update
+        self.names['v2'] = self.alpha_d2 * self.names['v2'] + beta3 * self.names['v3'] + self.lambda_ud1 * self.names['v1'] - self.gamma * spike  # Equation 2: UD2 update
+        self.names['v3'] = self.alpha2 * self.names['v3'] + beta2 * self.names['v1'] + self.beta_s2 * self.names['v2'] - self.v_threshold * spike  # Equation 3: US update
+
+        self.v = self.names['v3']
+
+    def neuronal_reset(self, spike):
+        if self.detach_reset:
+            spike_d = spike.detach()
+        else:
+            spike_d = spike
+
+        if not self.hard_reset:
+            self.names['v1'] = self.jit_soft_reset(self.names['v1'], spike_d, self.gamma)
+            self.names['v2'] = self.jit_soft_reset(self.names['v2'], spike_d, self.gamma)
+            self.names['v3'] = self.jit_soft_reset(self.names['v3'], spike_d, self.v_threshold)
+        else:
+            for i in range(1, self.k + 1):
+                self.names['v' + str(i)] = self.jit_hard_reset(self.names['v' + str(i)], spike_d, self.v_reset)
+
+    def forward(self, x: torch.Tensor):
+        return super().single_step_forward(x)
+
+    def extra_repr(self):
+        return f"v_threshold={self.v_threshold}, v_reset={self.v_reset}, detach_reset={self.detach_reset}, " \
+               f"hard_reset={self.hard_reset}, gamma={self.gamma}, k={self.k}, step_mode={self.step_mode}, backend={self.backend}"

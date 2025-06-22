@@ -10,6 +10,7 @@ from functools import partial
 import pandas as pd
 
 import utils
+from TCLIF import DDSNode
 from spiking_neuron.neuron import LIFNode
 from spiking_neuron.PLIF import ParametricLIFNode
 from spiking_neuron.TCLIF import TCLIFNode
@@ -157,6 +158,7 @@ parser.add_argument('--hard-reset', action='store_true', default=False, help='')
 parser.add_argument('--decay-factor', default=1.0, type=float, help='')
 parser.add_argument('--beta1', default=0., type=float, help='')
 parser.add_argument('--beta2', default=0., type=float, help='')
+parser.add_argument('--beta3', default=0., type=float, help='')
 parser.add_argument('--gamma', default=0.5, type=float, help='dendritic reset scaling hyper-parameter')
 parser.add_argument('--sg', default='gau', type=str, help='sg: triangle, exp, gau, rectangle and sigmoid')
 parser.add_argument('--neuron', default='tclif', type=str, help='neuron: tclif, lif, alif and plif')
@@ -210,14 +212,27 @@ elif args.neuron == 'plif':
     node = ParametricLIFNode
 elif args.neuron == 'alif':
     node = ALIF
+elif args.neuron == 'ddslif':
+    node = DDSNode
 
-# initialize the learnable betas
-beta = torch.full([1, 2], 0., dtype=torch.float)
-beta[0][0] = args.beta1
-beta[0][1] = args.beta2
-init1 = torch.sigmoid(beta[0][0]).cpu().item()
-init2 = torch.sigmoid(beta[0][1]).cpu().item()
-print("beta init from {:.2f} and {:.2f}".format(-init1, init2))
+if args.neuron == 'ddslif':
+    # initialize the learnable betas
+    beta = torch.full([1, 3], 0., dtype=torch.float)
+    beta[0][0] = args.beta1
+    beta[0][1] = args.beta2
+    beta[0][2] = args.beta3
+    init1 = torch.sigmoid(beta[0][0]).cpu().item()
+    init2 = torch.sigmoid(beta[0][1]).cpu().item()
+    init3 = torch.sigmoid(beta[0][2]).cpu().item()
+    print("beta init from {:.2f}, {:.2f} and {:.2f}".format(-init1, init2, init3))
+else:
+    # initialize the learnable betas
+    beta = torch.full([1, 2], 0., dtype=torch.float)
+    beta[0][0] = args.beta1
+    beta[0][1] = args.beta2
+    init1 = torch.sigmoid(beta[0][0]).cpu().item()
+    init2 = torch.sigmoid(beta[0][1]).cpu().item()
+    print("beta init from {:.2f} and {:.2f}".format(-init1, init2))
 
 spk_params = {"time_window": args.time_window,
               'v_threshold': args.threshold,
